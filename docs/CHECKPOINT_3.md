@@ -63,8 +63,7 @@ data, per the spec's rule that every number traces to stored data.
 
 Run the worker with `MIN_COHORT=1` (in `.env`) to allow a thin-evidence preview debate.
 
-- **Full debate:** startup council `b739531b`, two cohorts of one real story each,
-  verdict "Stay in the stable job" (confidence 0.52). Present it as a preview.
+- **Startup council `b739531b`:** removed from featured. Its two stories were mislabelled by the extractor (both described people who stayed), so its verdict is unreliable.
 - **Low-precedent example:** housing council `61e1079f`, five real stories that are
   all "chose B, glad", so no debate is possible and the verdict says so.
 
