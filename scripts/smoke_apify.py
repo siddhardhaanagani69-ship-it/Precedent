@@ -31,6 +31,7 @@ def main() -> int:
     calls = [
         ("reddit", "trudax/reddit-scraper-lite", {
             "searches": ["left stable job startup regret", "startup job one year later"],
+            "startUrls": [], "ignoreStartUrls": True, "includeNSFW": False,
             "searchPosts": True, "searchComments": False, "skipComments": False,
             "sort": "relevance", "maxItems": 20, "maxPostCount": 4, "maxComments": 3,
         }, 150),

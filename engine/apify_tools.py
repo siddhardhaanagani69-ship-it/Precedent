@@ -12,7 +12,7 @@ logging.getLogger("apify_client").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-def run_actor(actor_id: str, run_input: dict, timeout: int) -> list[dict]:
+def run_actor(actor_id: str, run_input: dict, timeout: int, *, partial: bool = False) -> list[dict]:
     """Bound actor runtime and SDK wait; never expose upstream errors."""
     require_keys("APIFY_TOKEN")
     # The SDK long-polls for wait_secs; the HTTP timeout must outlast that wait.
@@ -23,8 +23,7 @@ def run_actor(actor_id: str, run_input: dict, timeout: int) -> list[dict]:
             raise RuntimeError("Actor returned no run")
         if run["status"] not in {"SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"}:
             client.run(run["id"]).abort()
-            raise RuntimeError("Actor exceeded the wait limit")
-        if run["status"] != "SUCCEEDED":
+        if run["status"] != "SUCCEEDED" and not partial:
             raise RuntimeError("Actor did not complete successfully")
         return list(client.dataset(run["defaultDatasetId"]).iterate_items())
     except Exception as exc:

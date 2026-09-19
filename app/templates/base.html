@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ session.csrf }}">
+  <meta name="description" content="A decision council grounded in the experiences of people who have been there.">
+  <title>{% block title %}Precedent · Decisions, with perspective{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='room.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="masthead wrap">
+    <a class="wordmark" href="/" aria-label="Precedent home"><span class="brand-symbol" aria-hidden="true">p.</span>Precedent</a>
+    <span class="masthead-note">Other lives. A little perspective.</span>
+    <span id="worker-status" class="connection" role="status">Checking worker…</span>
+  </header>
+  <main id="main" class="wrap">{% block content %}{% endblock %}</main>
+  <footer class="site-footer wrap"><span>Real stories. Visible reasoning. Your decision.</span><span>Research prototype</span></footer>
+  <dialog id="receipt-dialog" aria-labelledby="receipt-title">
+    <form method="dialog"><button class="close-dialog" aria-label="Close source">×</button></form>
+    <h2 id="receipt-title">Source receipt</h2><p id="receipt-body"></p>
+    <a id="receipt-link" target="_blank" rel="noopener noreferrer">Read the original ↗</a>
+  </dialog>
+</body>
+</html>

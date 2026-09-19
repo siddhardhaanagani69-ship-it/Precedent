@@ -41,6 +41,8 @@ LIMITS = {
     "apify_wait": 150, "verification_timeout": 45, "llm_timeout": 60,
 }
 STANCE_TEMPERATURE = 4.0
+# ponytail: conservative BGE relevance floor; calibrate on labeled decisions if recall is poor.
+MIN_SOURCE_SIMILARITY = 0.55
 MODEL_ROLES = {
     "extractor": [
         {"id": "Qwen/Qwen2.5-7B-Instruct", "family": "Qwen", "weight": 1},

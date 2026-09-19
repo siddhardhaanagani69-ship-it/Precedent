@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy"><p class="intro">For the decisions with no easy answer</p>
+    <h1>Someone has<br>been <em>here before.</em></h1>
+    <p class="lede">Hear from people who made the choice you’re facing. What worked. What didn’t. And what might matter for you.</p>
+  </div>
+  <aside class="how-it-works" aria-label="How the council works">
+    <div><span>01</span><p><strong>Find the precedent</strong>Real accounts, with outcomes and receipts.</p></div>
+    <div><span>02</span><p><strong>Hear both sides</strong>Different experiences. A visible debate.</p></div>
+    <div><span>03</span><p><strong>Take a smaller next step</strong>A recommendation, a dissent, and a test.</p></div>
+  </aside>
+</section>
+<section class="decision-entry">
+  <form action="/councils" method="post" id="decision-form">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <label for="decision">What decision are you stuck on?</label>
+    <textarea id="decision" name="question" rows="3" minlength="10" maxlength="2000" required placeholder="Should I leave my stable job for a startup offer?">{{ request.form.get('question', '') }}</textarea>
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+    <div class="form-bottom"><p>A little context helps. Usually takes a few minutes.</p><button type="submit" class="primary">Gather my council <span aria-hidden="true">↗</span></button></div>
+  </form>
+  <div class="examples"><span>Try a decision</span>
+    <button type="button" data-example="Should I leave my stable job for a startup offer?">A startup or stability?</button>
+    <button type="button" data-example="Should I buy a discounted house in a Houston floodplain or keep renting?">Buy a house or keep renting?</button>
+    <button type="button" data-example="Should I move to a new city for a better job or stay close to family?">A new city or familiar roots?</button>
+  </div>
+</section>
+<section class="featured"><div class="section-heading"><h2>A seat at another council</h2><p>Completed conversations you can read instantly.</p></div>
+  {% for council in featured %}<a class="featured-row" href="{{ url_for('web.room', council_id=council.id) }}"><span>{{ council.question }}</span><span>Read the council ↗</span></a>
+  {% else %}<div class="empty-featured"><span class="small-symbol" aria-hidden="true">↳</span><p>The first council starts with you.<br><span>Completed demo conversations will appear here.</span></p></div>{% endfor %}
+</section>
+{% endblock %}

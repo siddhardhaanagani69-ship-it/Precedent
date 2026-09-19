@@ -119,10 +119,11 @@ class SQLiteStore:
     def get_council(self, council_id: str) -> dict | None:
         return decode(self.connection.execute("SELECT * FROM councils WHERE id = ?", (council_id,)).fetchone())
 
-    def claim_next_council(self) -> dict | None:
+    def claim_next_council(self, council_id: str | None = None) -> dict | None:
         with self.transaction() as conn:
             row = conn.execute(
-                "SELECT id, status FROM councils WHERE status IN ('queued','answered') ORDER BY created_at LIMIT 1"
+                "SELECT id, status FROM councils WHERE status IN ('queued','answered') "
+                "AND (? IS NULL OR id = ?) ORDER BY created_at LIMIT 1", (council_id, council_id)
             ).fetchone()
             if not row:
                 return None

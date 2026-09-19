@@ -3,9 +3,10 @@
 A decision council grounded in real stories. Python 3.11/3.12, Flask and
 vanilla JavaScript; Featherless for models, Apify for sources, SQLite for storage.
 
-**Current build: Phase 0.** Configuration, SQLite storage, decision math and live
-service checks are implemented. The Flask UI and worker pipeline start in Phase 1,
-after the checkpoint required by [the spec](docs/SPEC.md).
+**Current build: runnable Phase 1.** The Flask room and separate worker run
+planning → scouting → extraction → cohorts → three debate rounds → a basic verdict.
+Thin evidence returns an explicit low-precedent result. Personal values questions,
+moderator fact checks, memory and caching remain later phases in [the spec](docs/SPEC.md).
 
 ## Setup
 
@@ -69,7 +70,7 @@ per thread. Worker claims, answer submission, and turn numbering are transaction
 Math checks cover factual versus values disagreements and recommendation flips.
 Synthetic test records live only in temporary databases, never demo councils.
 
-## Commands for Phase 1 (not implemented yet)
+## Run the app
 
 Use separate terminals with the virtual environment active:
 
@@ -78,7 +79,17 @@ flask --app app --debug run --port 5050
 python -m engine.worker
 ```
 
-Future end-to-end check: `python scripts/smoke_e2e.py "Should I leave my stable job for a startup offer?"`.
+Open **http://localhost:5050**. The header shows whether the worker is connected.
+
+End-to-end check (calls real services):
+
+```sh
+python scripts/smoke_e2e.py "Should I leave my stable job for a startup offer?" --featured
+```
+
+`--featured` makes this completed example readable from the home page. Omit it
+for private runs. Model calls and actor runs consume your existing service allowance.
+Stop both processes with Ctrl+C. The SQLite database preserves completed councils.
 The web process must never start pipeline threads. Port 5050 avoids the usual macOS
 port 5000 conflict. Once the web app is running, an optional phone preview is
 `cloudflared tunnel --url http://localhost:5050`; install cloudflared separately.
@@ -89,5 +100,24 @@ port 5000 conflict. Once the web app is running, an optional phone preview is
 - [Reddit Scraper Lite inputs](https://apify.com/trudax/reddit-scraper-lite/input-schema)
 - [RAG Web Browser inputs](https://apify.com/apify/rag-web-browser/input-schema)
 - [Apify Python actor client](https://docs.apify.com/api/client/python/reference/class/ActorClient)
+
+## What is implemented
+
+- Server-rendered home/room, one-second polling, cohort meters and source dialogs.
+- Signed visitor sessions, request size limits, CSRF tokens, and council ownership checks.
+- A worker with two council slots, eight shared task slots, and weighted model scheduling.
+- Validated model JSON with one repair, verified-model fallbacks, and safe failure notices.
+- BGE relevance filtering and exact source-passage checks before extracted stories are retained.
+- Computed beliefs/priorities/stances, three debate rounds, own-cohort citations, and evidence-gated belief updates.
+- Basic verdict, receipts, metrics, low-precedent outcome, and retry controls.
+
+The relevance floor is conservative and may discard relevant stories. An exact
+source passage confirms provenance but does not independently prove that an account
+is true or that its interpretation is correct. Online stories are not a representative
+sample. Confidence describes model preference, not the probability of success.
+
+The currently verified models cover Qwen and Mistral families. Llama/Gemma access
+is gated; the worker uses the available models and discloses repeated families.
+Run `python scripts/check_models.py` after access is enabled to refresh the selection.
 
 Read [docs/SPEC.md](docs/SPEC.md) for the complete phased build and checkpoint rules.

@@ -205,6 +205,11 @@ def test_apify_long_poll_timeout_and_sanitized_failure(monkeypatch):
         apify.run_actor("test/actor", {}, 45)
     assert "simulated-sensitive" not in str(error.value)
 
+    monkeypatch.setattr(FakeClient, "call", lambda self, **options: {"status": "TIMED-OUT", "defaultDatasetId": "fixture"})
+    assert len(apify.run_actor("test/actor", {}, 45, partial=True)) == 1
+    with pytest.raises(RuntimeError):
+        apify.run_actor("test/actor", {}, 45)
+
 
 def test_embedding_check_has_a_process_deadline(monkeypatch, capsys):
     import runpy
