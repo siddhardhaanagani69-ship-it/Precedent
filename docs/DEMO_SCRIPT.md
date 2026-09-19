@@ -6,7 +6,7 @@ Fill in the bracketed names. Roughly 150 words per minute; the times below add u
 - Two terminals visible: web (`flask --app app --debug run --port 5050`) and worker (`MIN_COHORT=1 python -m engine.worker`). Keep the worker terminal on screen; its logs are the "console logs" the judges want.
 - Browser on `http://localhost:5050/`. Housing council open in a second tab: `/c/61e1079f-7f3d-457b-a5e6-e3decaf58039`.
 - Apify console runs page open in a third tab as proof of live scraping.
-- Start the live run in Beat 3 at the top of the demo so the scout has time to work while you talk. Cut to the worker log when it finishes.
+- Start the live run in Beat 1 at the top of the demo so the scout has time to work while you talk. Cut to the worker log when it finishes.
 
 ---
 
@@ -19,7 +19,7 @@ Fill in the bracketed names. Roughly 150 words per minute; the times below add u
 
 *(Swap the roles to match who did what. Speaker labels below use P1–P4.)*
 
-**Who speaks when:** P1 pitch, P4 demo beats 1 and 3, P2 demo beat 2, P3 demo beat 4, P1 close. Every person gets one turn of about 20–30 seconds, and P4 opens and closes the screen.
+**Who speaks when:** P1 pitch, P4 demo beats 1 and 3, P2 demo beat 2, P3 demo beat 4, P1 close. Everyone speaks at least once; P1 speaks twice.
 
 ---
 
@@ -60,7 +60,7 @@ Optionally flash the terminal with `pytest -q` showing 44 passed:
 >
 > The hard problem we hit was source breadth. We fixed a token-budget bug that was silently emptying the extractor, and added a check that catches stories tagged with the wrong choice. Next is more sources beyond one Reddit scraper, and the Supabase backend we've written for shared, persistent memory.
 >
-> Precedent. Someone has been here before."
+> **All four:** "Precedent. Someone has been here before."
 
 ---
 
