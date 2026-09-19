@@ -5,7 +5,7 @@
   <a class="back-link" href="/">← A different decision</a>
   <header class="room-heading"><p class="intro">Your decision council</p><h1>{{ council.question }}</h1><p id="stage-description" role="status">Preparing the room…</p></header>
   <ol id="pipeline" class="pipeline" aria-label="Council progress">
-    {% for status, label in [('queued','Queued'),('planning','Plan'),('scouting','Find stories'),('mining','Read outcomes'),('forming','Form council'),('debating','Debate'),('finalizing','Weigh it up'),('done','Verdict')] %}
+    {% for status, label in [('queued','Queued'),('planning','Plan'),('scouting','Find stories'),('mining','Read outcomes'),('forming','Form council'),('debating','Debate'),('awaiting_user','Your priorities'),('finalizing','Weigh it up'),('done','Verdict')] %}
     <li data-stage="{{ status }}"><span></span>{{ label }}</li>{% endfor %}
   </ol>
   <p id="progress-counts" class="progress-counts">Waiting for the worker.</p>
@@ -15,9 +15,15 @@
     <div id="agents" class="agents"><div id="agents-empty" class="empty-state">The seats will fill once there are enough firsthand stories to represent.</div></div>
   </section>
   <div class="room-columns"><section class="transcript-section" aria-labelledby="transcript-title"><h2 id="transcript-title">The conversation</h2><div id="transcript" role="log" aria-live="polite" aria-relevant="additions"><p id="transcript-empty" class="empty-state">You’ll see each step here as it happens.</p></div></section>
-    <aside class="evidence-panel"><details open><summary>On the evidence board <span id="evidence-count">0</span></summary><div id="evidence"><p>No shared fact checks yet. Click any story citation in the conversation to read its source.</p></div></details><p class="method-note">This council compares firsthand stories. Current facts have not been independently checked, and your personal priorities have not been assessed.</p></aside>
+    <aside class="evidence-panel"><details open><summary>On the evidence board <span id="evidence-count">0</span></summary><div id="evidence"><p>No shared fact checks yet. Click any story citation in the conversation to read its source.</p></div></details><p class="method-note">This council compares firsthand stories. Shared checks appear here when factual disagreements need resolving. Accounts are self-selected; findings may be incomplete.</p></aside>
   </div>
+  <section id="question-card" class="verdict" aria-labelledby="question-title" hidden>
+    <p class="intro">One thing that could change the answer</p><h2 id="question-title"></h2>
+    <p id="question-why"></p><div id="question-answers" class="question-answers"></div>
+    <p id="answer-status" role="status"></p>
+  </section>
   <section id="verdict" class="verdict" aria-labelledby="verdict-title" hidden><div class="verdict-top"><p class="intro">What the council thinks</p><span id="confidence"></span></div><h2 id="verdict-title"></h2><p id="verdict-summary" class="verdict-summary"></p>
+    <div id="crowd-comparison"></div>
     <div class="verdict-details"><div><h3>The crux</h3><p id="verdict-crux"></p></div><div><h3>The surviving dissent</h3><p id="verdict-dissent"></p></div></div>
     <div class="cheap-test"><span aria-hidden="true">↗</span><div><h3>Before you commit, try this</h3><p id="verdict-test"></p></div></div><div id="verdict-receipts" class="receipts"></div>
     <p class="method-note">Confidence is the council’s computed preference, not a predicted success rate. Online stories are self-selected, and your priorities may differ.</p>

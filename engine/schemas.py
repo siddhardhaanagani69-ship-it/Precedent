@@ -104,3 +104,24 @@ class VerdictText(Output):
     summary: str = Field(min_length=1, max_length=1200)
     crux: str = Field(min_length=1, max_length=500)
     cheap_test: str = Field(min_length=1, max_length=500)
+
+
+class VerificationQuery(Output):
+    query: str = Field(min_length=5, max_length=400)
+
+
+class Finding(Output):
+    supported: bool = False
+    source_index: int = Field(ge=0, le=2, default=0)
+    finding: str = Field(default='', max_length=600)
+    evidence_quote: str = Field(default='', max_length=1200)
+    suggested_p: float = Field(default=0.5, ge=0, le=1)
+
+
+class ModeratorNote(Output):
+    message: str = Field(min_length=1, max_length=500)
+
+
+class QuestionText(Output):
+    text: str = Field(min_length=1, max_length=500)
+    why: str = Field(min_length=1, max_length=500)

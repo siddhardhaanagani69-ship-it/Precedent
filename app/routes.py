@@ -46,7 +46,9 @@ def state(council_id):
     safe_council["plan"] = {k: council["plan"].get(k) for k in ("title", "options")}
     return jsonify(council=safe_council, agents=store().get_agents(council_id),
                    turns=store().get_turns(council_id), evidence=store().get_evidence(council_id),
-                   question=store().get_question(council_id), verdict=store().get_verdict(council_id))
+                   question=({k: question[k] for k in ('id', 'text', 'why', 'answers')}
+                             if (question := store().get_question(council_id)) else None),
+                   can_answer=council['visitor_id'] == session['visitor_id'], verdict=store().get_verdict(council_id))
 
 
 @bp.get("/api/councils/<council_id>/cite/<label>")

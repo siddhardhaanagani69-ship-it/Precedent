@@ -804,3 +804,7 @@ dialog a {
     scroll-behavior:auto!important
   }
 }
+.question-answers { display:flex; flex-wrap:wrap; gap:12px; margin:20px 0; }
+#answer-status { margin:12px 0 0; font-size:14px; }
+#crowd-comparison { padding:18px 0; border-top:1px solid var(--line); }
+#crowd-comparison p { font-size:13px; margin-bottom:8px; }

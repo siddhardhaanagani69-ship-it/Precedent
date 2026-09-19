@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from engine.config import require_keys
 from engine.embeddings import Embeddings
 from engine.llm import CouncilLLM, resolved_models
-from engine.stages import plan, scout, mine, cohorts, debate, verdict
+from engine.stages import plan, scout, mine, cohorts, debate, verdict, values
 from store import get_store
 
 log = logging.getLogger("precedent")
@@ -75,13 +75,15 @@ def run_council(store, council: dict, pool, embedder) -> None:
         if council["status"] == "finalizing":
             ctx.stage("finalizing", verdict.run, council["plan"], store.get_stories(ctx.cid), store.get_agents(ctx.cid))
             return
-        ctx.notice("This council compares firsthand stories in three rounds. It does not yet check current facts or ask about your personal priorities.")
+        ctx.notice("This council compares firsthand accounts, checks disputed beliefs, and may ask one question if your answer could change its recommendation.")
         decision_plan = ctx.stage("planning", plan.run)
         candidates = ctx.stage("scouting", scout.run, decision_plan)
         stories = ctx.stage("mining", mine.run, decision_plan, candidates)
         agents = ctx.stage("forming", cohorts.run, decision_plan, stories)
         if agents:
             agents = ctx.stage("debating", debate.run, decision_plan, stories, agents)
+            if values.run(ctx, decision_plan, stories, agents):
+                return
         ctx.stage("finalizing", verdict.run, decision_plan, stories, agents)
     except Exception as exc:
         # Raw exceptions can contain upstream request data or credentials.

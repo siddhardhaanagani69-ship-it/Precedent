@@ -64,3 +64,15 @@ def score_question(current: dict[str, float], answers: list[dict[str, float]]) -
     # A tie is not a reversal; only a strictly better alternative flips it.
     flips = any(max(a.values()) > a[leader] for a in answers)
     return {"score": score, "flips": flips, "ask": flips or score >= 0.10}
+
+
+def consensus(plan: dict, stories: list[dict], agents: list[dict]) -> tuple[dict, dict]:
+    """Average the seated cohorts by their total story similarity."""
+    masses = {a['id']: sum(s['similarity'] for s in stories
+                          if f"{s['option_id']}:{s['outcome']}" == a['cohort_key']) for a in agents}
+    total = sum(masses.values())
+    weights = {attr: sum(a['weights'][attr] * masses[a['id']] for a in agents) / total
+               for attr in plan['attributes']}
+    beliefs = {o['id']: {c['id']: sum(a['beliefs'][o['id']][c['id']] * masses[a['id']] for a in agents) / total
+                         for c in plan['consequences']} for o in plan['options']}
+    return beliefs, weights

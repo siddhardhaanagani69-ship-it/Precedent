@@ -7,6 +7,8 @@ const pct = (value) => `${Math.round(value * 100)}%`;
 const seenTurns = new Set();
 const agentCards = new Map();
 let terminalReads = 0;
+let questionRendered = null;
+let answerPending = false;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {signal: AbortSignal.timeout(10000), ...options,
@@ -42,6 +44,7 @@ async function showReceipt(label) {
   try {
     const receipt = await api(`/api/councils/${councilId}/cite/${label}`);
     $('#receipt-body').textContent = receipt.summary;
+    if (!receipt.url) return;
     const url = new URL(receipt.url);
     if (['https:', 'http:'].includes(url.protocol) && !url.username && !url.password) {
       link.href = url.href; link.hidden = false;
@@ -122,12 +125,52 @@ function renderVerdict(verdict) {
     const holder = element('span'); citationText(holder, `[${receipt.label}]`); receipts.append(holder);
   }
 }
+function renderQuestion(data) {
+  const waiting = data.council.status === 'awaiting_user' && data.question;
+  $('#question-card').hidden = !waiting;
+  if (!waiting || questionRendered === data.question.id) return;
+  questionRendered = data.question.id;
+  $('#question-title').textContent = data.question.text;
+  $('#question-why').textContent = data.question.why;
+  $('#question-answers').replaceChildren();
+  if (!data.can_answer) {$('#answer-status').textContent = 'Only the person who started this council can answer.'; return;}
+  for (const answer of data.question.answers) {
+    const button = element('button', 'primary', answer.label);
+    button.type = 'button';
+    button.addEventListener('click', async () => {
+      if (answerPending) return;
+      answerPending = true;
+      const buttons = [...$('#question-answers').querySelectorAll('button')];
+      buttons.forEach(b => {b.disabled = true;});
+      try {
+        await api(`/api/councils/${councilId}/answer`, {method:'POST', body:JSON.stringify({answer_id:answer.id})});
+        $('#answer-status').textContent = 'Answer saved. The council is preparing your verdict.';
+      } catch (error) {
+        $('#answer-status').textContent = error.message;
+        buttons.forEach(b => {b.disabled = false;});
+        answerPending = false;
+      }
+    });
+    $('#question-answers').append(button);
+  }
+}
+function renderComparison(verdict, options) {
+  if (!verdict) return;
+  const box = $('#crowd-comparison'); box.replaceChildren();
+  box.append(element('h3', '', 'Most people online vs. people like you'));
+  box.append(element('p', 'method-note', 'Glad rates in the stored accounts: all accounts vs. weighted by similarity to your situation.'));
+  for (const option of options) {
+    const item = verdict.crowd_vs_you[option.id];
+    if (!item) continue;
+    box.append(element('p', '', `${option.label}: ${item.crowd === null ? '—' : pct(item.crowd)} overall · ${item.similar === null ? '—' : pct(item.similar)} similar · ${item.n} accounts`));
+  }
+}
 function render(data) {
   const {council, agents, turns, evidence, verdict} = data;
   const descriptions = {queued:'Your decision is in the queue. The worker will pick it up shortly.', planning:'Defining the options and what could change the outcome.', scouting:'Looking for people who made this choice and wrote about what happened.', mining:'Reading accounts and keeping relevant firsthand outcomes.', forming:'Grouping experiences and calculating each cohort’s priorities.', debating:'The council is comparing experiences. Every cited story has a receipt.', awaiting_user:'The council is waiting for your answer.', answered:'Your answer is ready for the worker.', finalizing:'Weighing the evidence and writing the verdict.', done:'The council has finished. Read the discussion and its recommendation below.', failed:'This run could not finish. The available conversation is saved below.'};
   $('#stage-description').textContent = descriptions[council.status] || council.status;
   const stages = [...document.querySelectorAll('[data-stage]')];
-  const current = stages.findIndex(node => node.dataset.stage === council.status);
+  const current = stages.findIndex(node => node.dataset.stage === (council.status === 'answered' ? 'awaiting_user' : council.status));
   stages.forEach((node, i) => {node.className = i === current ? 'current' : i < current ? 'complete' : ''; if (i === current) node.setAttribute('aria-current', 'step'); else node.removeAttribute('aria-current');});
   const p = council.progress;
   $('#progress-counts').textContent = `${p.stories_found} sources found → ${p.stories_kept} ${p.stories_kept === 1 ? 'story' : 'stories'} kept → ${p.cohorts} voices · Round ${p.round} of 3`;
@@ -135,6 +178,7 @@ function render(data) {
     $('#agents-empty').textContent = 'This run did not find enough substantial cohorts to seat a council.';
     $('#meter-label').textContent = 'No debate was held.';
   }
+  renderQuestion(data); renderComparison(verdict, council.plan.options || []);
   renderAgents(agents, council.plan.options || []); renderTurns(turns, agents); renderVerdict(verdict);
   $('#evidence-count').textContent = evidence.length;
   if (evidence.length) {

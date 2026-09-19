@@ -7,6 +7,7 @@ from concurrent.futures import as_completed
 from engine.config import LIMITS, STANCE_TEMPERATURE
 from engine.math_core import stance
 from engine.schemas import Argument
+from engine.stages import moderator
 
 CITATION = re.compile(r"\[([SE]\d+)\]")
 REFERENCE = re.compile(r"\b([SE]\d+)\b")
@@ -64,6 +65,14 @@ def run(ctx, plan: dict, stories: list[dict], agents: list[dict]) -> list[dict]:
         evidence = ctx.store.get_evidence(ctx.cid)
         previous_turns = [t for t in ctx.store.get_turns(ctx.cid) if t["kind"] == "argument"]
         latest = {t["agent_id"]: t for t in previous_turns}
+        previous_stances = {a['id']: a['stance'].copy() for a in agents}
+        for agent in agents:
+            previous = latest.get(agent['id'])
+            if previous:
+                for item in evidence:
+                    if item['created_at'] > previous['created_at']:
+                        agent['beliefs'][item['option_id']][item['consequence_id']] = item['value']
+                agent['stance'] = stance(agent['beliefs'], agent['weights'], plan['consequences'], STANCE_TEMPERATURE)
         # Snapshot BEFORE launching all turns, so round one is blind and peers are symmetric.
         peers = [{"agent_id": t["agent_id"], "message": t["message"]} for t in latest.values()]
 
@@ -84,6 +93,7 @@ def run(ctx, plan: dict, stories: list[dict], agents: list[dict]) -> list[dict]:
                  "beliefs": agent["beliefs"], "stance": agent["stance"],
                  "stories": [{"label": s["label"], "summary": s["summary"]} for s in own],
                  "evidence": [{k: e[k] for k in ("label", "body", "option_id", "consequence_id", "value")} for e in evidence[-10:]],
+                 "moderator_note": plan.get("moderator_note", ""),
                  "peer_turns": [] if round_number == 1 else [p for p in peers if p["agent_id"] != agent["id"]]},
                 fallback=fallback, max_tokens=1000, lane="debate", model=model)
             return agent, output
@@ -98,7 +108,7 @@ def run(ctx, plan: dict, stories: list[dict], agents: list[dict]) -> list[dict]:
             for change in rejected:
                 ctx.store.insert_turn(ctx.cid, round=round_number, kind="rejected_update", agent_id=agent["id"],
                     message=f"Blocked: {agent['name']} tried to change {change['consequence_id']} without new matching evidence.")
-            agent["prev_stance"] = agent["stance"].copy()
+            agent["prev_stance"] = previous_stances[agent["id"]]
             for change in filtered["belief_changes"]:
                 agent["beliefs"][change["option_id"]][change["consequence_id"]] = change["new_p"]
             agent["stance"] = stance(agent["beliefs"], agent["weights"], plan["consequences"], STANCE_TEMPERATURE)
@@ -106,7 +116,6 @@ def run(ctx, plan: dict, stories: list[dict], agents: list[dict]) -> list[dict]:
             ctx.store.insert_turn(ctx.cid, agent_id=agent["id"], round=round_number,
                                   kind="argument", stance=agent["stance"], **filtered)
             ctx.first_argument()
-        ctx.store.insert_turn(ctx.cid, round=round_number, kind="moderator",
-            message=("Round complete. The council will now consider each other's source-backed arguments."
-                     if round_number < LIMITS["max_rounds"] else "Three rounds are complete. Computing the recommendation from beliefs and priorities."))
+        if moderator.run(ctx, plan, agents, round_number):
+            break
     return agents
