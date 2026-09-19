@@ -265,3 +265,21 @@ def test_fallback_search_reports_when_every_result_is_unusable(monkeypatch):
         {"metadata": {"url": "https://www.worthai.com/"}, "markdown": "y" * 250}])
     with pytest.raises(RuntimeError):
         scout.search_candidates("anything", 30)
+
+
+def test_reddit_queries_are_shortened_to_distinctive_terms():
+    """Reddit ANDs every term, so a long web-search phrase finds almost no threads."""
+    from engine.stages.scout import reddit_query
+    assert reddit_query("left corporate job for startup update") == "left corporate job startup"
+    assert reddit_query("years later after joining startup") == "years later joining startup"
+    # A phrase made only of filler still yields something to search for.
+    assert reddit_query("after the it")
+
+
+def test_fiction_subreddits_are_not_treated_as_evidence():
+    """Invented accounts must never reach extraction; no later gate can spot them."""
+    from engine.stages.scout import fiction_source
+    assert fiction_source("https://www.reddit.com/r/nosleep/comments/a/story/")
+    assert fiction_source("https://www.reddit.com/r/WritingPrompts/comments/b/x/")
+    assert not fiction_source("https://www.reddit.com/r/financialindependence/comments/c/x/")
+    assert not fiction_source("")

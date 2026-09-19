@@ -12,6 +12,31 @@ from engine.apify_tools import normalize_reddit_items, run_actor
 from engine.config import LIMITS, MIN_CANDIDATE_SIMILARITY, MIN_SOURCE_SIMILARITY
 
 
+# Reddit's search ANDs every term, so the long natural phrases that a web search
+# needs return almost no threads there. Trimming to the distinctive content words
+# keeps the same intent while matching far more posts.
+FILLER = {"a", "an", "the", "my", "i", "for", "to", "of", "in", "on", "at", "after",
+          "before", "and", "or", "it", "its", "is", "was", "were", "am", "be", "been",
+          "with", "from", "that", "this", "still", "initial", "instead", "about", "as"}
+
+
+def reddit_query(phrase: str, words: int = 4) -> str:
+    """Shorten a natural search phrase to its distinctive terms for Reddit search."""
+    kept = [word for word in phrase.split() if word.strip(".,'\"").casefold() not in FILLER]
+    return " ".join((kept or phrase.split())[:words])
+
+
+# Fiction subreddits publish invented accounts, which the spec forbids treating as
+# evidence; no extraction gate downstream can tell them from a real outcome.
+FICTION = {"nosleep", "writingprompts", "shortstories", "creepypasta", "hfy",
+           "libraryofshadows", "talesfromthecrypt"}
+
+
+def fiction_source(url: str) -> bool:
+    match = re.search(r"/r/([\w]+)", url or "")
+    return bool(match) and match.group(1).casefold() in FICTION
+
+
 OUTCOME_WORDS = re.compile(
     r"\b(regret\w*|glad|happy|happier|wish|mistake|worth|worked out|best decision|worst decision)\b", re.I)
 FIRST_PERSON = re.compile(r"\b(I|my|we|our)\b", re.I)
@@ -124,7 +149,7 @@ def run(ctx, plan: dict) -> list[dict]:
 
     def reddit(batch):
         items = run_actor("trudax/reddit-scraper-lite", {
-            "searches": batch, "startUrls": [], "ignoreStartUrls": True,
+            "searches": [reddit_query(q) for q in batch], "startUrls": [], "ignoreStartUrls": True,
             "searchPosts": True, "searchComments": False, "includeNSFW": False,
             "skipComments": False, "skipCommunity": True, "sort": "relevance",
             "maxItems": LIMITS["reddit_max_items"] // 2, "maxPostCount": 40, "maxComments": 15,
@@ -154,6 +179,8 @@ def run(ctx, plan: dict) -> list[dict]:
             ctx.notice("Indexed source pages were blocked or unavailable. Continuing with the Reddit results already received.")
     unique = {}
     for candidate in candidates:
+        if fiction_source(candidate["url"]):
+            continue
         key = (candidate["url"], hashlib.sha256(candidate["text"].encode()).hexdigest())
         unique.setdefault(key, candidate)
     candidates = relevant_candidates(ctx, plan, list(unique.values()), LIMITS["reddit_max_items"])

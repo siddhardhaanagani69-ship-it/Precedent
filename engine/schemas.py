@@ -64,7 +64,9 @@ class MinedStory(Output):
     context: dict[str, str | None] = Field(default_factory=dict)
     reasons: list[Reason] = Field(default_factory=list, max_length=10)
     summary: str = Field(default="", max_length=1000)
-    evidence_quote: str = Field(default="", max_length=1200)
+    # A short passage proves provenance as well as a long one, and six long quotes
+    # overrun the extractor's reply budget, costing records for whole candidates.
+    evidence_quote: str = Field(default="", max_length=400)
 
 
 class Extraction(Output):
