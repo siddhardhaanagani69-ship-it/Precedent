@@ -1,0 +1,9 @@
+flask>=3.1,<4
+python-dotenv>=1.0,<2
+openai>=1.0,<3
+apify-client>=2.0,<3
+pydantic>=2.0,<3
+numpy>=1.26,<3
+fastembed>=0.7,<0.8
+supabase>=2.0,<3
+pytest>=8.0,<10

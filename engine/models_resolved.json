@@ -1,0 +1,81 @@
+{
+  "checked_at": "2026-09-19T17:55:56.716615+00:00",
+  "checks": [
+    {
+      "id": "Qwen/Qwen2.5-7B-Instruct",
+      "family": "Qwen",
+      "weight": 1,
+      "ok": true,
+      "latency_seconds": 1.89,
+      "error": null
+    },
+    {
+      "id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+      "family": "Llama",
+      "weight": 1,
+      "ok": false,
+      "latency_seconds": 0.49,
+      "error": "HTTP 403"
+    },
+    {
+      "id": "Qwen/Qwen2.5-14B-Instruct",
+      "family": "Qwen",
+      "weight": 1,
+      "ok": true,
+      "latency_seconds": 2.23,
+      "error": null
+    },
+    {
+      "id": "google/gemma-3-12b-it",
+      "family": "Gemma",
+      "weight": 1,
+      "ok": false,
+      "latency_seconds": 0.24,
+      "error": "HTTP 403"
+    },
+    {
+      "id": "mistralai/Mistral-Nemo-Instruct-2407",
+      "family": "Mistral",
+      "weight": 1,
+      "ok": true,
+      "latency_seconds": 3.3,
+      "error": null
+    },
+    {
+      "id": "Qwen/Qwen2.5-32B-Instruct",
+      "family": "Qwen",
+      "weight": 2,
+      "ok": false,
+      "latency_seconds": 4.09,
+      "error": "HTTP 500"
+    }
+  ],
+  "agents": [
+    {
+      "id": "Qwen/Qwen2.5-14B-Instruct",
+      "family": "Qwen",
+      "weight": 1
+    },
+    {
+      "id": "mistralai/Mistral-Nemo-Instruct-2407",
+      "family": "Mistral",
+      "weight": 1
+    },
+    {
+      "id": "Qwen/Qwen2.5-7B-Instruct",
+      "family": "Qwen",
+      "weight": 1
+    }
+  ],
+  "extractor": {
+    "id": "Qwen/Qwen2.5-7B-Instruct",
+    "family": "Qwen",
+    "weight": 1
+  },
+  "moderator": {
+    "id": "Qwen/Qwen2.5-14B-Instruct",
+    "family": "Qwen",
+    "weight": 1
+  },
+  "ready": false
+}

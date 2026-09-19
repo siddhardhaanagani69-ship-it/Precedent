@@ -1,0 +1,1 @@
+"""Precedent's worker pipeline."""
