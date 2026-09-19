@@ -73,6 +73,15 @@ class MinedStory(Output):
     evidence_quote: str = Field(default="", max_length=400)
 
 
+class ChoiceCheck(Output):
+    idx: int = Field(ge=0)
+    option_id: Literal["A", "B", "C", "unclear"]
+
+
+class ChoiceChecks(Output):
+    checks: list[ChoiceCheck] = Field(max_length=6)
+
+
 class Extraction(Output):
     stories: list[MinedStory] = Field(max_length=6)
 

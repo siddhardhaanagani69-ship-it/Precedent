@@ -113,3 +113,16 @@ def test_supabase_migration_locks_down_every_table():
     assert 'create extension if not exists vector' in sql
     assert 'match_recent_council' in sql
     assert 'extensions.vector(384)' in sql
+
+
+def test_confirm_choices_drops_mislabelled_and_keeps_on_check_failure():
+    """A story whose quote shows the other option is dropped; a failed check keeps them."""
+    from types import SimpleNamespace
+    from engine.stages.mine import Audit, confirm_choices
+    plan = {"options": [{"id": "A", "label": "Take the offer"}, {"id": "B", "label": "Stay"}]}
+    kept = [{"option_id": "A"}, {"option_id": "B"}]
+    quotes, batch = [(0, "q1"), (1, "q2")], [{"url": "u", "text": "t"}] * 2
+    llm = SimpleNamespace(structured=lambda *a, **k: {"checks": [{"idx": 0, "option_id": "B"}, {"idx": 1, "option_id": "B"}]})
+    assert confirm_choices(SimpleNamespace(llm=llm), plan, batch, kept, quotes, Audit()) == [{"option_id": "B"}]
+    llm = SimpleNamespace(structured=lambda *a, **k: None)
+    assert confirm_choices(SimpleNamespace(llm=llm), plan, batch, kept, quotes, Audit()) == kept

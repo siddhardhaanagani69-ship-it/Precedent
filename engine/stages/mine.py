@@ -10,7 +10,7 @@ from concurrent.futures import as_completed
 import numpy as np
 
 from engine.config import LIMITS, ROOT
-from engine.schemas import Extraction
+from engine.schemas import ChoiceChecks, Extraction
 from engine.stages.scout import intent_scores
 
 
@@ -69,6 +69,32 @@ class Audit:
                                     "rows": self.rows}, indent=1))
 
 
+def confirm_choices(ctx, plan: dict, batch: list[dict], kept: list[dict], quotes: list, audit) -> list[dict]:
+    """Drop stories whose evidence quote does not show the option they were labelled with.
+
+    The small extractor sometimes tags a person who stayed as having taken the offer.
+    A second, narrower question over the quote alone catches most of these, and an
+    unverified label is worse for the debate than a missing story.
+    """
+    if not kept:
+        return kept
+    output = ctx.llm.structured("extractor", ChoiceChecks,
+        "For each item, read only the quote and say which option the author actually chose. "
+        "Staying in the current situation is a choice. Answer unclear if the quote does not show it.",
+        {"options": plan["options"], "items": [{"idx": i, "quote": quote} for i, (_, quote) in enumerate(quotes)]},
+        fallback=None, max_tokens=300)
+    if output is None:
+        return kept
+    verdict = {c["idx"]: c["option_id"] for c in output["checks"]}
+    confirmed = []
+    for i, story in enumerate(kept):
+        if verdict.get(i) == story["option_id"]:
+            confirmed.append(story)
+        else:
+            audit.record(batch[quotes[i][0]], "choice_not_confirmed", f"{story['option_id']} vs {verdict.get(i)}")
+    return confirmed
+
+
 def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
     if not candidates:
         return []
@@ -101,7 +127,7 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
             {"options": plan["options"], "consequences": plan["consequences"], "situational": plan["situational"],
              "candidates": [{"idx": i, "text": c["text"][:1800]} for i, c in enumerate(batch)]},
             fallback={"stories": []}, max_tokens=3200)
-        kept, seen, judged = [], set(), set()
+        kept, seen, judged, quotes = [], set(), set(), []
         for row in output["stories"]:
             index = row["idx"]
             if index in judged or index >= len(batch):
@@ -138,13 +164,14 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
                 continue
             audit.record(batch[index], "kept", row["summary"][:120])
             source = batch[index]
+            quotes.append((index, row["evidence_quote"]))
             kept.append({"source": source["source"], "url": source["url"], "option_id": row["option_id"],
                 "outcome": row["outcome"], "context": {k: v for k, v in row["context"].items() if k in situation_keys},
                 "reasons": reasons, "summary": clean_text(row["summary"], 30), "months_after": row["months_after"]})
         for position, candidate in enumerate(batch):
             if position not in judged:
                 audit.record(candidate, "omitted_by_model")
-        return kept
+        return confirm_choices(ctx, plan, batch, kept, quotes, audit)
 
     size = LIMITS["extraction_batch"]
     futures = [ctx.pool.submit(extract, candidates[i:i + size]) for i in range(0, len(candidates), size)]
