@@ -10,17 +10,20 @@ Fill in the bracketed names. Roughly 150 words per minute; the times below add u
 
 ---
 
-## 0:00–0:30 · Team intros (5–7 seconds each)
+## 0:00–0:30 · Team intros (about 7 seconds each)
 
-**[Name 1]:** "I'm [Name 1]. I led the pipeline: planning, scraping and extraction."
-**[Name 2]:** "I'm [Name 2]. I built the debate engine and the stance math."
-**[Name 3]:** "I'm [Name 3]. I built the web app and the room UI."
+**[P1]:** "I'm [P1]. I built the scraping and the pipeline: Apify, planning and the worker."
+**[P2]:** "I'm [P2]. I built extraction and the LLM layer on Featherless."
+**[P3]:** "I'm [P3]. I built the debate engine and the stance math."
+**[P4]:** "I'm [P4]. I built the web app, the room UI, and the tests."
 
-*(Adjust roles to match who did what. Two people: split the three lines between you.)*
+*(Swap the roles to match who did what. Speaker labels below use P1–P4.)*
+
+**Who speaks when:** P1 pitch, P4 demo beats 1 and 3, P2 demo beat 2, P3 demo beat 4, P1 close. Every person gets one turn of about 20–30 seconds, and P4 opens and closes the screen.
 
 ---
 
-## 0:30–1:00 · The pitch (the trailer)
+## 0:30–1:00 · The pitch (the trailer), spoken by P1
 
 > "Every big decision has been made by thousands of people before you. They wrote about it, and almost nobody reads it. Advice online is opinion. What you actually want is outcomes: who chose this, and how did it go?
 >
@@ -32,18 +35,18 @@ Fill in the bracketed names. Roughly 150 words per minute; the times below add u
 
 ## 1:00–2:30 · Live demo (talk through it as it runs)
 
-**Beat 1, 1:00–1:20, the input.** On the home page:
+**Beat 1, 1:00–1:20, the input (P4).** On the home page:
 > "One box. I type a real dilemma and hit Gather my council. Flask and Jinja serve this page, with vanilla JavaScript and no build step. The web app only writes to a database. A separate worker process picks the job up."
 
 Type a question, submit. Switch to the worker terminal.
 
-**Beat 2, 1:20–1:50, the pipeline, with console logs.** Show lines like `[council 3f2a] planning done in 12s`, `scouting done in 120s`, `mining done in 16s`.
+**Beat 2, 1:20–1:50, the pipeline, with console logs (P2 talks, P1 can point at Apify).** Show lines like `[council 3f2a] planning done in 12s`, `scouting done in 120s`, `mining done in 16s`.
 > "The worker plans the decision with Featherless models. Then Apify scrapes Reddit for first-hand outcomes, with a RAG browser fallback. We embed candidates with fastembed and extract each story into a structured record: what they chose, how it went, and why. Every summary must copy a real quote from the source, or it's thrown away."
 
-**Beat 3, 1:50–2:10, the room.** Cut back to the browser to show the pipeline strip and the live counts (sources found, stories kept).
+**Beat 3, 1:50–2:10, the room (P4).** Cut back to the browser to show the pipeline strip and the live counts (sources found, stories kept).
 > "The strip is driven by the worker's progress writes, polled every second. Here's the honest part. Reddit only gave us a handful of usable stories for this question."
 
-**Beat 4, 2:10–2:30, the verdict.** Open the housing council tab and show the dark verdict panel: "Not enough precedent".
+**Beat 4, 2:10–2:30, the verdict (P3).** Open the housing council tab and show the dark verdict panel: "Not enough precedent".
 > "Precedent won't invent a debate. Below five stories per group, it says so and shows what's missing. It's a designed outcome, not a crash. In the full path, each cohort is an agent on a different model family. Their stances are computed from beliefs times weights, so the models never set a number. If an agent tries to change its mind without new evidence, the code blocks it."
 
 Optionally flash the terminal with `pytest -q` showing 44 passed:
@@ -51,7 +54,7 @@ Optionally flash the terminal with `pytest -q` showing 44 passed:
 
 ---
 
-## 2:30–3:00 · Close: so what?
+## 2:30–3:00 · Close: so what? (P1, last line all four together)
 
 > "Precedent is for anyone facing a hard decision: a career move, a big purchase, a switch of study. It matters because it replaces confident advice with real outcomes and visible reasoning.
 >
