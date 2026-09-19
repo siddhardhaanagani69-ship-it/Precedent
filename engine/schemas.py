@@ -36,6 +36,10 @@ class Plan(Output):
     situational: list[Situation] = Field(min_length=2, max_length=4)
     user_summary: str = Field(min_length=1, max_length=600)
     search_queries: list[str] = Field(min_length=6, max_length=6)
+    # Reddit's relevance ranking is weak for these decisions and returns very few
+    # distinct threads. Searching inside communities where people post firsthand
+    # outcomes is what widens the pool. Optional: a plan without them still runs.
+    subreddits: list[str] = Field(default_factory=list, max_length=6)
 
     @model_validator(mode="after")
     def references(self):

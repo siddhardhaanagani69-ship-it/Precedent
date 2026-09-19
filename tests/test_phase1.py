@@ -283,3 +283,23 @@ def test_fiction_subreddits_are_not_treated_as_evidence():
     assert fiction_source("https://www.reddit.com/r/WritingPrompts/comments/b/x/")
     assert not fiction_source("https://www.reddit.com/r/financialindependence/comments/c/x/")
     assert not fiction_source("")
+
+
+def test_community_searches_widen_the_thread_pool_safely():
+    """Site-wide ranking returned the same few threads however queries were worded."""
+    from engine.stages.scout import community_searches
+    queries = ["left corporate job for startup update", "stayed at corporate job worth it"]
+    searches = community_searches(queries, ["cscareerquestions", "r/ExperiencedDevs"])
+    assert searches == ["subreddit:cscareerquestions left corporate job",
+                        "subreddit:ExperiencedDevs stayed corporate job"]
+    # Fiction communities and malformed names never reach the scraper.
+    assert community_searches(queries, ["nosleep", "not a name!", ""]) == []
+    # A plan without subreddits still runs site-wide.
+    assert community_searches(queries, []) == []
+
+
+def test_plan_accepts_subreddits_without_requiring_them():
+    from engine.schemas import Plan
+    plan = decision_plan()
+    assert Plan.model_validate(plan).subreddits == []
+    assert Plan.model_validate({**plan, "subreddits": ["jobs", "Entrepreneur"]}).subreddits == ["jobs", "Entrepreneur"]

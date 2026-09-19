@@ -12,6 +12,17 @@ from engine.apify_tools import normalize_reddit_items, run_actor
 from engine.config import LIMITS, MIN_CANDIDATE_SIMILARITY, MIN_SOURCE_SIMILARITY
 
 
+# Fiction subreddits publish invented accounts, which the spec forbids treating as
+# evidence; no extraction gate downstream can tell them from a real outcome.
+FICTION = {"nosleep", "writingprompts", "shortstories", "creepypasta", "hfy",
+           "libraryofshadows", "talesfromthecrypt"}
+
+
+def fiction_source(url: str) -> bool:
+    match = re.search(r"/r/([\w]+)", url or "")
+    return bool(match) and match.group(1).casefold() in FICTION
+
+
 # Reddit's search ANDs every term, so the long natural phrases that a web search
 # needs return almost no threads there. Trimming to the distinctive content words
 # keeps the same intent while matching far more posts.
@@ -26,15 +37,20 @@ def reddit_query(phrase: str, words: int = 4) -> str:
     return " ".join((kept or phrase.split())[:words])
 
 
-# Fiction subreddits publish invented accounts, which the spec forbids treating as
-# evidence; no extraction gate downstream can tell them from a real outcome.
-FICTION = {"nosleep", "writingprompts", "shortstories", "creepypasta", "hfy",
-           "libraryofshadows", "talesfromthecrypt"}
+def community_searches(queries: list[str], subreddits: list[str]) -> list[str]:
+    """Pair each query with a community, so searches reach beyond one ranking.
 
-
-def fiction_source(url: str) -> bool:
-    match = re.search(r"/r/([\w]+)", url or "")
-    return bool(match) and match.group(1).casefold() in FICTION
+    Site-wide relevance search kept returning the same five or six threads however
+    the queries were worded. Searching inside the communities where people actually
+    post outcomes is what widens the pool.
+    """
+    names = [re.sub(r"^/?r/", "", name).strip() for name in subreddits]
+    names = [name for name in names if re.fullmatch(r"\w{2,21}", name or "")
+             and name.casefold() not in FICTION]
+    if not names:
+        return []
+    return [f"subreddit:{names[i % len(names)]} {reddit_query(query, 3)}"
+            for i, query in enumerate(queries)]
 
 
 OUTCOME_WORDS = re.compile(
@@ -149,7 +165,8 @@ def run(ctx, plan: dict) -> list[dict]:
 
     def reddit(batch):
         items = run_actor("trudax/reddit-scraper-lite", {
-            "searches": [reddit_query(q) for q in batch], "startUrls": [], "ignoreStartUrls": True,
+            "searches": [q if q.startswith("subreddit:") else reddit_query(q) for q in batch],
+            "startUrls": [], "ignoreStartUrls": True,
             "searchPosts": True, "searchComments": False, "includeNSFW": False,
             "skipComments": False, "skipCommunity": True, "sort": "relevance",
             "maxItems": LIMITS["reddit_max_items"] // 2, "maxPostCount": 40, "maxComments": 15,
@@ -157,7 +174,10 @@ def run(ctx, plan: dict) -> list[dict]:
         }, 70, partial=True)
         return normalize_reddit_items(items)
 
-    futures = [ctx.pool.submit(reddit, queries[::2]), ctx.pool.submit(reddit, queries[1::2])]
+    # One run searches site-wide, the other inside the plan's communities.
+    community = community_searches(queries, plan.get("subreddits") or [])
+    futures = [ctx.pool.submit(reddit, queries),
+               ctx.pool.submit(reddit, community or queries[1::2])]
     candidates = relevant_candidates(ctx, plan, collect(futures, min(deadline, time.monotonic() + 80), ctx),
                                      LIMITS["reddit_max_items"])
     ctx.progress(stories_found=len(candidates))
