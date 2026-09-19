@@ -1,13 +1,15 @@
 """Rank candidates, extract firsthand outcomes, and store only paraphrases."""
 
 import json
+import os
 import re
+import threading
 import unicodedata
 from concurrent.futures import as_completed
 
 import numpy as np
 
-from engine.config import LIMITS
+from engine.config import LIMITS, ROOT
 from engine.schemas import Extraction
 from engine.stages.scout import intent_scores
 
@@ -37,6 +39,36 @@ def grounded_quote(quote: str, source: str) -> bool:
     return len(quote) >= 25 and len(quote.split()) >= 5 and quote in source
 
 
+class Audit:
+    """Record why each candidate was or was not kept, for calibration runs.
+
+    Extraction is the narrowest point in the pipeline and its rejections are
+    otherwise invisible: a run reports 98 candidates and 1 story with no way to
+    tell which gate discarded the rest. Enabled with PRECEDENT_AUDIT=1.
+    """
+
+    def __init__(self):
+        self.on = os.getenv("PRECEDENT_AUDIT") == "1"
+        self.rows: list[dict] = []
+        self.lock = threading.Lock()
+
+    def record(self, candidate: dict, verdict: str, detail: str = "") -> None:
+        if not self.on:
+            return
+        with self.lock:
+            self.rows.append({"verdict": verdict, "detail": detail, "url": candidate.get("url", ""),
+                              "kind": candidate.get("kind", ""), "text": candidate["text"][:400]})
+
+    def save(self, question: str) -> None:
+        if not self.on:
+            return
+        from collections import Counter
+        path = ROOT / "data/mine_audit.json"
+        path.write_text(json.dumps({"question": question,
+                                    "totals": Counter(r["verdict"] for r in self.rows),
+                                    "rows": self.rows}, indent=1))
+
+
 def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
     if not candidates:
         return []
@@ -49,6 +81,8 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
     consequence_ids = {c["id"] for c in plan["consequences"]} | {"other"}
     consequence_attributes = {c["id"]: c["attribute"] for c in plan["consequences"]}
     situation_keys = {s["key"] for s in plan["situational"]}
+
+    audit = Audit()
 
     def extract(batch):
         output = ctx.llm.structured("extractor", Extraction,
@@ -64,13 +98,26 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
             {"options": plan["options"], "consequences": plan["consequences"], "situational": plan["situational"],
              "candidates": [{"idx": i, "text": c["text"][:1800]} for i, c in enumerate(batch)]},
             fallback={"stories": []}, max_tokens=2400)
-        kept, seen = [], set()
+        kept, seen, judged = [], set(), set()
         for row in output["stories"]:
             index = row["idx"]
-            if (index in seen or index >= len(batch) or not row["relevant"] or row["option_id"] not in options
-                    or row["outcome"] not in {"glad", "regret"} or not row["summary"].strip()):
+            if index in judged or index >= len(batch):
+                continue
+            judged.add(index)
+            if not row["relevant"]:
+                audit.record(batch[index], "not_relevant")
+                continue
+            if row["option_id"] not in options:
+                audit.record(batch[index], "no_option", str(row["option_id"]))
+                continue
+            if row["outcome"] not in {"glad", "regret"}:
+                audit.record(batch[index], "no_outcome", row["outcome"])
+                continue
+            if not row["summary"].strip():
+                audit.record(batch[index], "no_summary")
                 continue
             if not grounded_quote(row.get("evidence_quote", ""), batch[index]["text"][:1800]):
+                audit.record(batch[index], "quote_not_found", row.get("evidence_quote", "")[:200])
                 continue
             seen.add(index)
             reasons = []
@@ -83,11 +130,17 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
                     reason["text"] = clean_text(reason["text"], 15)
                     reasons.append(reason)
             if not reasons:
+                audit.record(batch[index], "no_valid_reasons",
+                             str([(r["consequence_id"], r["attribute"]) for r in row["reasons"]])[:200])
                 continue
+            audit.record(batch[index], "kept", row["summary"][:120])
             source = batch[index]
             kept.append({"source": source["source"], "url": source["url"], "option_id": row["option_id"],
                 "outcome": row["outcome"], "context": {k: v for k, v in row["context"].items() if k in situation_keys},
                 "reasons": reasons, "summary": clean_text(row["summary"], 30), "months_after": row["months_after"]})
+        for position, candidate in enumerate(batch):
+            if position not in judged:
+                audit.record(candidate, "omitted_by_model")
         return kept
 
     size = LIMITS["extraction_batch"]
@@ -96,6 +149,7 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
     for future in as_completed(futures):
         stories.extend(future.result())
         ctx.progress(stories_kept=len(stories))
+    audit.save(ctx.council["question"])
     if not stories:
         return []
     user_text = plan["user_summary"] + json.dumps({s["key"]: s["user_value"] for s in plan["situational"] if s["user_value"]})
