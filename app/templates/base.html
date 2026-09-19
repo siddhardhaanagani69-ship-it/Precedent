@@ -6,6 +6,8 @@
   <meta name="csrf-token" content="{{ session.csrf }}">
   <meta name="description" content="A decision council grounded in the experiences of people who have been there.">
   <title>{% block title %}Precedent · Decisions, with perspective{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='room.js') }}" defer></script>
 </head>

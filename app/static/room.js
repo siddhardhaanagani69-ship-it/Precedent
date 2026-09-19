@@ -73,7 +73,7 @@ function renderAgents(agents, options) {
       card.style.setProperty('--agent-color', agent.color);
       card.append(element('h3', '', agent.name));
       const meta = element('div', 'agent-meta');
-      meta.append(element('span', '', `Based on ${agent.story_count} stories`), element('span', 'family', agent.family));
+      meta.append(element('span', '', `Based on ${agent.story_count} ${agent.story_count === 1 ? "story" : "stories"}`), element('span', 'family', agent.family));
       const value = element('div', 'stance-value');
       value.append(element('span', 'meter-option'), element('strong', 'meter-number'));
       const meter = element('div', 'meter');
