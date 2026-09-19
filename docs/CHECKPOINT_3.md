@@ -23,7 +23,7 @@ the low-precedent verdict rather than a debate. This is a source-breadth problem
 not a pipeline failure — every stage after extraction is exercised by tests, and
 the low-precedent path is itself a designed outcome rather than a crash.
 
-Measured across five audited live runs of the startup dilemma:
+Measured across audited live runs of the startup dilemma:
 
 | run | candidates | stories kept | note |
 |---|---|---|---|
@@ -31,6 +31,7 @@ Measured across five audited live runs of the startup dilemma:
 | e8ff3daa | 69 | 2 | 48% of candidates were off-site (a vendor, a charity) |
 | bd6a1e42 | 60 | 4 | Reddit-only after the hostname filter |
 | ada4a411 | 93 | 2 | extractor truncation fixed |
+| f008a4b4 | n/a | 3 | subreddit-targeted search added; still under the 5-story cohort floor |
 
 What the audits established, in order:
 
@@ -49,8 +50,10 @@ What the audits established, in order:
    almost no threads. Reddit now receives the distinctive content words instead.
 
 **What remains.** Candidates still come from only five or six distinct threads, and
-`not_relevant` is now the dominant rejection. The next lever is targeting subreddits
-directly rather than relying on Reddit's relevance ranking. Nothing was lowered to
+`not_relevant` is now the dominant rejection. Subreddit targeting is now in (commit 890b91f) and lifted the count only from 2 to 3.
+The housing demo council was not re-run, since it would hit the same ceiling.
+Proposed fallback: keep live runs as the low-precedent showcase and demo from
+featured replays once curated stories exist; the alternative is a larger scrape budget. Nothing was lowered to
 manufacture a debate: `min_cohort` stays at 5 and no synthetic stories exist in demo
 data, per the spec's rule that every number traces to stored data.
 
