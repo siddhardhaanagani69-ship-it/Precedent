@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from engine.config import require_keys
 from engine.embeddings import Embeddings
 from engine.llm import CouncilLLM, resolved_models
-from engine.stages import plan, scout, mine, cohorts, debate, verdict, values
+from engine.stages import plan, scout, mine, cohorts, debate, verdict, values, memory
 from store import get_store
 
 log = logging.getLogger("precedent")
@@ -76,9 +76,12 @@ def run_council(store, council: dict, pool, embedder) -> None:
             ctx.stage("finalizing", verdict.run, council["plan"], store.get_stories(ctx.cid), store.get_agents(ctx.cid))
             return
         ctx.notice("This council compares firsthand accounts, checks disputed beliefs, and may ask one question if your answer could change its recommendation.")
-        decision_plan = ctx.stage("planning", plan.run)
-        candidates = ctx.stage("scouting", scout.run, decision_plan)
-        stories = ctx.stage("mining", mine.run, decision_plan, candidates)
+        cached = memory.find(ctx)
+        decision_plan = ctx.stage("planning", plan.run, cached)
+        stories = memory.reuse(ctx, decision_plan, cached)
+        if stories is None:
+            candidates = ctx.stage("scouting", scout.run, decision_plan)
+            stories = ctx.stage("mining", mine.run, decision_plan, candidates)
         agents = ctx.stage("forming", cohorts.run, decision_plan, stories)
         if agents:
             agents = ctx.stage("debating", debate.run, decision_plan, stories, agents)

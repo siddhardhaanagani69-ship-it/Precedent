@@ -2,12 +2,14 @@
 
 import json
 import re
+import unicodedata
 from concurrent.futures import as_completed
 
 import numpy as np
 
 from engine.config import LIMITS
 from engine.schemas import Extraction
+from engine.stages.scout import intent_scores
 
 
 def clean_text(text: str, words: int) -> str:
@@ -15,20 +17,33 @@ def clean_text(text: str, words: int) -> str:
     return " ".join(text.split()[:words])
 
 
+# Models re-typeset quotes they copy faithfully: curly quotes, en/em dashes and
+# ellipsis characters routinely replace their ASCII originals. Folding these keeps
+# the provenance check strict about content while tolerating punctuation.
+TYPOGRAPHY = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'",
+                            "\u201c": '"', "\u201d": '"', "\u201e": '"', "\u201f": '"',
+                            "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-",
+                            "\u2014": "-", "\u2015": "-", "\u2026": "...", "\u00a0": " "})
+
+
+def normalize_quote(text: str) -> str:
+    """Fold case, unicode form, punctuation and whitespace for substring matching."""
+    return " ".join(unicodedata.normalize("NFKC", text).translate(TYPOGRAPHY).casefold().split())
+
+
 def grounded_quote(quote: str, source: str) -> bool:
     """Reject invented evidence before a model-generated story can be retained."""
-    quote = " ".join(quote.casefold().split())
-    source = " ".join(source.casefold().split())
+    quote, source = normalize_quote(quote), normalize_quote(source)
     return len(quote) >= 25 and len(quote.split()) >= 5 and quote in source
 
 
 def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
     if not candidates:
         return []
-    query_vector = ctx.embedder.embed([ctx.council["question"]])[0]
-    ctx.store.update_council(ctx.cid, question_embedding=query_vector.tolist())
-    vectors = ctx.embedder.embed([c["text"] for c in candidates])
-    order = np.argsort(vectors @ query_vector)[::-1][:LIMITS["prefilter"]]
+    ctx.store.update_council(ctx.cid, question_embedding=ctx.embedder.embed([ctx.council["question"]])[0].tolist())
+    # Rank by the same outcome intents scouting used, so the extractor sees the
+    # candidates most likely to describe a lived result, not the closest restatements.
+    order = np.argsort(intent_scores(ctx, plan, candidates))[::-1][:LIMITS["prefilter"]]
     candidates = [candidates[int(i)] for i in order]
     options = {o["id"] for o in plan["options"]}
     consequence_ids = {c["id"] for c in plan["consequences"]} | {"other"}
@@ -60,8 +75,11 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
             seen.add(index)
             reasons = []
             for reason in row["reasons"]:
-                if reason["consequence_id"] in consequence_ids and reason["attribute"] in plan["attributes"]:
-                    reason["attribute"] = consequence_attributes.get(reason["consequence_id"], reason["attribute"])
+                # A listed consequence defines its own attribute, so the model's
+                # attribute wording only has to be valid for the "other" bucket.
+                attribute = consequence_attributes.get(reason["consequence_id"], reason["attribute"])
+                if reason["consequence_id"] in consequence_ids and attribute in plan["attributes"]:
+                    reason["attribute"] = attribute
                     reason["text"] = clean_text(reason["text"], 15)
                     reasons.append(reason)
             if not reasons:

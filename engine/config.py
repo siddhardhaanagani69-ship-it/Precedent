@@ -39,10 +39,19 @@ LIMITS = {
     "max_rounds": 3, "max_verifications": 2, "reddit_max_items": 250,
     "prefilter": 150, "extraction_batch": 6, "min_cohort": 5,
     "apify_wait": 150, "verification_timeout": 45, "llm_timeout": 60,
+    "min_candidates": 60,
 }
 STANCE_TEMPERATURE = 4.0
-# ponytail: conservative BGE relevance floor; calibrate on labeled decisions if recall is poor.
+# Candidates are scored against the plan's outcome queries as well as the question.
+# Similarity to the question alone ranks restatements of the dilemma and generic
+# advice above the short first-person outcome reports a council needs; measured on
+# labelled examples, question-only scoring kept 2 of 4 real outcomes at this floor
+# and intent scoring kept 4 of 4.
 MIN_SOURCE_SIMILARITY = 0.55
+# Absolute junk floor used only when the floor above leaves too few candidates.
+# Extraction is the real gate, so retrieval favours recall over precision and must
+# never hand the extractor an empty list.
+MIN_CANDIDATE_SIMILARITY = 0.45
 MODEL_ROLES = {
     "extractor": [
         {"id": "Qwen/Qwen2.5-7B-Instruct", "family": "Qwen", "weight": 1},

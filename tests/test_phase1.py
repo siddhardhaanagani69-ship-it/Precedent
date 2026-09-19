@@ -194,10 +194,50 @@ def test_extraction_requires_verbatim_support():
     assert not grounded_quote("I joined", "I joined something unrelated.")
 
 
+def scout_ctx(vectors):
+    """One intent (the question) plus one vector per candidate, in call order."""
+    calls = iter(vectors)
+    return SimpleNamespace(council={"question": "Job choice"},
+                           embedder=SimpleNamespace(embed=lambda texts: np.array(next(calls))))
+
+
 def test_source_relevance_and_outcome_heuristic():
     from engine.stages.scout import relevant_candidates, outcome_candidates
-    ctx = SimpleNamespace(council={"question": "Job choice"}, embedder=SimpleNamespace(
-        embed=lambda texts: np.array([[1., 0.], [0.8, 0.6], [0.2, 0.98]])))
+    plan = {"search_queries": []}
+    ctx = scout_ctx([[[1., 0.]], [[0.8, 0.6], [0.2, 0.98]]])
     candidates = [{"text": "I regret the job change."}, {"text": "Unrelated results"}]
-    assert relevant_candidates(ctx, candidates) == candidates[:1]
+    # Only the first clears the floor; the second is below the absolute junk floor.
+    assert relevant_candidates(ctx, plan, candidates, 10) == candidates[:1]
     assert outcome_candidates(candidates) == 1
+
+
+def test_outcome_intents_rank_above_question_restatements():
+    """A lived outcome must outrank a restatement of the same dilemma."""
+    from engine.stages.scout import relevant_candidates
+    plan = {"search_queries": ["startup regret one year later"]}
+    # Question vector, then the outcome-query vector, then the two candidates.
+    ctx = scout_ctx([[[1., 0.], [0., 1.]], [[0.1, 0.99], [0.9, 0.44]]])
+    outcome = {"text": "Glad I did it, best year of my career."}
+    restatement = {"text": "Should I take the startup offer? Thoughts?"}
+    assert relevant_candidates(ctx, plan, [outcome, restatement], 10)[0] == outcome
+
+
+def test_floor_never_starves_extraction():
+    """Below the floor, ranking still yields candidates instead of an empty run."""
+    from engine.stages.scout import relevant_candidates
+    plan = {"search_queries": []}
+    ctx = scout_ctx([[[1., 0.]], [[0.5, 0.87], [0.48, 0.88], [0.05, 0.999]]])
+    candidates = [{"text": "a"}, {"text": "b"}, {"text": "c"}]
+    kept = relevant_candidates(ctx, plan, candidates, 10)
+    # Two clear the 0.45 junk floor; the third does not and stays dropped.
+    assert kept == candidates[:2]
+
+
+def test_retyped_punctuation_keeps_a_faithful_quote():
+    """Curly quotes and dashes must not discard a genuinely copied passage."""
+    from engine.stages.mine import grounded_quote
+    source = "I took the offer - it's been rough - but I don't regret leaving."
+    retyped = "I took the offer — it’s been rough — but I don’t regret leaving."
+    assert grounded_quote(retyped, source)
+    # Folding punctuation must not let invented content through.
+    assert not grounded_quote("I took the offer and immediately doubled my salary.", source)
