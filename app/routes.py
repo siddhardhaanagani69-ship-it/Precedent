@@ -22,7 +22,7 @@ def accessible(council_id: str, owner: bool = False) -> dict:
 
 @bp.get("/")
 def index():
-    return render_template("index.html", featured=store().list_featured(), error=None)
+    return render_template("index.html", featured=store().list_featured(), profile=store().get_profile(session["visitor_id"]), error=None)
 
 
 @bp.post("/councils")
@@ -30,7 +30,7 @@ def create_council():
     try:
         council = store().create_council(session["visitor_id"], request.form.get("question", ""))
     except ValueError as exc:
-        return render_template("index.html", featured=store().list_featured(), error=str(exc)), 400
+        return render_template("index.html", featured=store().list_featured(), profile=store().get_profile(session["visitor_id"]), error=str(exc)), 400
     return redirect(url_for("web.room", council_id=council["id"]))
 
 

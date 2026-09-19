@@ -156,6 +156,19 @@ h1 em {
   font-weight:500;
   margin-bottom:3px
 }
+.memory-note {
+  margin:28px 0 -6px;
+  padding:10px 14px;
+  border-left:2px solid var(--blue);
+  background:var(--light);
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.5
+}
+.memory-note strong {
+  color:var(--ink);
+  font-weight:500
+}
 .decision-entry {
   border-top:3px solid var(--ink);
   padding:25px 0 30px

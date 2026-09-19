@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 import numpy as np
+import pytest
 
 from engine.stages import memory, plan as planning
 from test_phase1 import decision_plan
@@ -83,3 +84,32 @@ def test_planner_receives_memory_and_prefills_known_fact(tmp_path):
     assert plan['situational'][0]['user_value'] == 'high'
     assert any('The council remembers' in note for note in notices)
     assert store.get_profile('another-visitor') is None
+
+
+def test_backend_factory_rejects_an_unknown_backend(monkeypatch):
+    """A typo in DB_BACKEND must fail loudly, not silently demo on the wrong store."""
+    import store as store_module
+    import engine.config as config
+    monkeypatch.setattr(config, 'DB_BACKEND', 'postgres')
+    with pytest.raises(RuntimeError):
+        store_module.get_store()
+
+
+def test_supabase_store_requires_credentials():
+    from store.supabase_store import SupabaseStore
+    with pytest.raises(RuntimeError):
+        SupabaseStore('', '')
+
+
+def test_supabase_migration_locks_down_every_table():
+    """RLS with no policies is what keeps the browser out of the database."""
+    from engine.config import ROOT
+    sql = (ROOT / 'supabase/migrations/001_init.sql').read_text().casefold()
+    for table in ('profiles', 'councils', 'stories', 'agents', 'turns', 'evidence',
+                  'questions', 'answers', 'verdicts', 'worker_heartbeat'):
+        assert f'create table if not exists {table} ' in sql
+        assert f'alter table {table}' in sql and 'enable row level security' in sql
+    assert 'create policy' not in sql, 'a public policy would expose council data'
+    assert 'create extension if not exists vector' in sql
+    assert 'match_recent_council' in sql
+    assert 'extensions.vector(384)' in sql

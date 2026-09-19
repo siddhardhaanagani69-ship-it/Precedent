@@ -11,6 +11,11 @@
     <div><span>03</span><p><strong>Take a smaller next step</strong>A recommendation, a dissent, and a test.</p></div>
   </aside>
 </section>
+{% if profile and (profile.facts or profile.weights) %}<p class="memory-note">
+  <strong>The council remembers:</strong>
+  {%- for key, value in profile.facts.items() %} {{ key }}: {{ value }}{{ ";" if not loop.last }}{% endfor %}
+  {%- for key, value in profile.weights.items() %} · {{ key }} priority: {{ "%.0f"|format(value) }}/5{% endfor %}
+</p>{% endif %}
 <section class="decision-entry">
   <form action="/councils" method="post" id="decision-form">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
