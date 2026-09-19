@@ -241,3 +241,27 @@ def test_retyped_punctuation_keeps_a_faithful_quote():
     assert grounded_quote(retyped, source)
     # Folding punctuation must not let invented content through.
     assert not grounded_quote("I took the offer and immediately doubled my salary.", source)
+
+
+def test_fallback_search_keeps_only_reddit_threads(monkeypatch):
+    """The site: operator is advisory, so off-site results must be dropped here."""
+    from engine.stages import scout
+    body = "x" * 250
+    pages = [
+        {"metadata": {"url": "https://www.worthai.com/"}, "markdown": body},
+        {"metadata": {"url": "https://letswinpc.org/survivor-stories/worth-it/"}, "markdown": body},
+        {"metadata": {"url": "https://www.reddit.com/r/jobs/comments/abc/left_my_job/"}, "markdown": body},
+        {"metadata": {"url": "https://www.reddit.com/user/someone/"}, "markdown": body},
+        {"metadata": {"url": "https://www.reddit.com/r/jobs/"}, "markdown": body},
+    ]
+    monkeypatch.setattr(scout, "run_actor", lambda *a, **k: pages)
+    kept = scout.search_candidates("left my job for a startup site:reddit.com", 30)
+    assert {c["url"] for c in kept} == {"https://www.reddit.com/r/jobs/comments/abc/left_my_job/"}
+
+
+def test_fallback_search_reports_when_every_result_is_unusable(monkeypatch):
+    from engine.stages import scout
+    monkeypatch.setattr(scout, "run_actor", lambda *a, **k: [
+        {"metadata": {"url": "https://www.worthai.com/"}, "markdown": "y" * 250}])
+    with pytest.raises(RuntimeError):
+        scout.search_candidates("anything", 30)

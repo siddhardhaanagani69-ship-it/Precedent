@@ -102,7 +102,14 @@ def search_candidates(query: str, timeout: int) -> list[dict]:
             continue
         url = (page.get("metadata") or {}).get("url") or (page.get("searchResult") or {}).get("url") or ""
         parts = urlsplit(url)
-        if parts.scheme not in {"http", "https"} or re.search(r"/(?:u|user)/", parts.path):
+        # The site: operator is advisory and the browser returns general web results:
+        # one run pulled 22 paragraphs of vendor marketing from a company called Worth
+        # and 11 from a cancer charity, both matched on "worth it". Only Reddit threads
+        # are firsthand decision accounts, so anything else is dropped here.
+        if (parts.scheme not in {"http", "https"}
+                or parts.hostname not in {"reddit.com", "www.reddit.com", "old.reddit.com"}
+                or "/comments/" not in parts.path
+                or re.search(r"/(?:u|user)/", parts.path)):
             continue
         usable = True
         result.extend(paragraphs(page.get("markdown") or page.get("text") or "", url))
