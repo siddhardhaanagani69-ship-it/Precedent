@@ -37,7 +37,7 @@ CONCURRENCY_UNITS = positive_int("FEATHERLESS_CONCURRENCY_UNITS", 4)
 MAX_CONTEXT = positive_int("FEATHERLESS_MAX_CONTEXT", 8192)
 LIMITS = {
     "max_rounds": 3, "max_verifications": 2, "reddit_max_items": 250,
-    "prefilter": 150, "extraction_batch": 6, "min_cohort": 5,
+    "prefilter": 150, "extraction_batch": 6, "min_cohort": positive_int("MIN_COHORT", 5),
     "apify_wait": 150, "verification_timeout": 45, "llm_timeout": 60,
     "min_candidates": 60,
 }

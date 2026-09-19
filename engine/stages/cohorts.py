@@ -42,6 +42,8 @@ def run(ctx, plan: dict, stories: list[dict]) -> list[dict]:
     if len(buckets) < 2:
         ctx.notice("Too few substantial cohorts for a debate. The verdict will explain the evidence gap.")
         return []
+    if LIMITS["min_cohort"] < 5:
+        ctx.notice("Thin evidence: cohorts are small, so treat this debate as a preview built only from the real stories found.")
     personas = ctx.llm.structured("moderator", Personas,
         "Name each cohort plainly by its choice and outcome. Give each a two-sentence first-person voice "
         "grounded only in its sample summaries. Do not invent biographies or names.",

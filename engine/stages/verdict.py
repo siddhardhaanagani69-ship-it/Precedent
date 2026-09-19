@@ -2,7 +2,7 @@
 
 from collections import Counter
 from datetime import datetime, timezone
-from engine.config import STANCE_TEMPERATURE
+from engine.config import LIMITS, STANCE_TEMPERATURE
 from engine.math_core import stance
 from engine.stages import values
 from engine.schemas import VerdictText
@@ -11,7 +11,7 @@ from engine.schemas import VerdictText
 def run(ctx, plan: dict, stories: list[dict], agents: list[dict]) -> dict:
     if not agents:
         verdict = {"recommendation": "Not enough precedent", "confidence": None,
-            "summary": f"We found {len(stories)} relevant firsthand {'outcome' if len(stories) == 1 else 'outcomes'}, but fewer than two cohorts had at least five stories. There is not enough evidence for a responsible comparison.",
+            "summary": f"We found {len(stories)} relevant firsthand {'outcome' if len(stories) == 1 else 'outcomes'}, but fewer than two cohorts had at least {LIMITS["min_cohort"]} stories. There is not enough evidence for a responsible comparison.",
             "crux": "More accounts with clear choices and outcomes are needed.", "dissent": {},
             "cheap_test": "Ask one person who chose each option what happened and what they would do differently.",
             "crowd_vs_you": plan.get("crowd_vs_you", {}), "receipts": [
