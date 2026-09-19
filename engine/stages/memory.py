@@ -3,11 +3,16 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
+import os
 
 import numpy as np
 
+from engine.config import LIMITS
+
 
 def find(ctx) -> dict | None:
+    if os.getenv('PRECEDENT_NO_CACHE') == '1':
+        return None
     vector = ctx.embedder.embed([ctx.council['question']])[0]
     ctx.store.update_council(ctx.cid, question_embedding=vector.tolist())
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
@@ -27,9 +32,11 @@ def reuse(ctx, plan: dict, previous: dict | None) -> list[dict] | None:
     if not previous or taxonomy(plan) != taxonomy(previous['plan']):
         return None
     # A cosine match alone cannot guarantee matching choices or consequence IDs.
-    # ponytail: exact taxonomy compatibility sacrifices cache hits to avoid mislabeling evidence.
+    # Exact taxonomy compatibility sacrifices cache hits to avoid mislabelling evidence.
     rows = ctx.store.get_stories(previous['id'])
-    if not rows:
+    # Reusing a council that never gathered enough evidence to seat cohorts would
+    # silently pass on its emptiness and skip the scrape that could fix it.
+    if len(rows) < LIMITS['min_cohort'] * 2:
         return None
     stories = [{k: deepcopy(v) for k, v in row.items() if k not in {'id', 'council_id', 'created_at'}} for row in rows]
     known = {s['key']: s['user_value'] for s in plan['situational'] if s.get('user_value') is not None}
@@ -43,5 +50,6 @@ def reuse(ctx, plan: dict, previous: dict | None) -> list[dict] | None:
         story['label'] = f'S{i}'
     ctx.store.insert_stories(ctx.cid, stories)
     ctx.progress(stories_found=len(stories), stories_kept=len(stories), force=True)
-    ctx.notice(f'Reused {len(stories)} stories from a similar council completed within the last 24 hours. Recomputed similarity for your situation.')
+    ctx.notice(f'Reused {len(stories)} stories from a similar council completed within the last 24 hours. '
+               'Recomputed similarity for your situation.')
     return ctx.store.get_stories(ctx.cid)

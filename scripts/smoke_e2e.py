@@ -3,6 +3,7 @@
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -20,7 +21,10 @@ def main() -> int:
     parser.add_argument("question")
     parser.add_argument("--featured", action="store_true", help="Make this completed council readable as a demo from the home page")
     parser.add_argument('--answer', choices=['first', 'middle', 'last'], help='Answer a generated question automatically')
+    parser.add_argument('--fresh', action='store_true', help='Scrape again instead of reusing a recent council\'s stories')
     args = parser.parse_args()
+    if args.fresh:
+        os.environ['PRECEDENT_NO_CACHE'] = '1'
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     embedder = Embeddings()
     store = get_store()
