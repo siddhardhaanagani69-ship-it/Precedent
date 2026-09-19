@@ -31,6 +31,7 @@ Measured across audited live runs of the startup dilemma:
 | e8ff3daa | 69 | 2 | 48% of candidates were off-site (a vendor, a charity) |
 | bd6a1e42 | 60 | 4 | Reddit-only after the hostname filter |
 | ada4a411 | 93 | 2 | extractor truncation fixed |
+| 30bdf7b8 | 70 | 0 | one Reddit run per query pair (reverted): no more candidates than before, and every extraction batch then failed validation |
 | f008a4b4 | n/a | 3 | subreddit-targeted search added; still under the 5-story cohort floor |
 
 What the audits established, in order:
