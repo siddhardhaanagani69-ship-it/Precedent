@@ -3,10 +3,11 @@
 A decision council grounded in real stories. Python 3.11/3.12, Flask and
 vanilla JavaScript; Featherless for models, Apify for sources, SQLite for storage.
 
-**Current build: runnable Phase 1.** The Flask room and separate worker run
-planning → scouting → extraction → cohorts → three debate rounds → a basic verdict.
-Thin evidence returns an explicit low-precedent result. Personal values questions,
-moderator fact checks, memory and caching remain later phases in [the spec](docs/SPEC.md).
+**Current build: Phases 0–3 on SQLite.** The Flask room and separate worker run
+planning → scouting → extraction → cohorts → three debate rounds → moderator checks
+→ at most one scored question → a full verdict, with visitor memory and a story cache.
+Thin evidence returns an explicit low-precedent result rather than a fabricated debate.
+See [Checkpoint 3](docs/CHECKPOINT_3.md) for what is verified and what is not.
 
 ## Setup
 
@@ -42,6 +43,13 @@ Set `DB_BACKEND=sqlite` and `SQLITE_PATH=data/precedent.db`. The spec's standard
 limits are 4 Featherless concurrency units and 8192 context tokens; configure them
 to match your plan. Supply a strong random `FLASK_SECRET_KEY` for signed sessions.
 Supabase credentials are optional until the explicitly requested backend switch.
+
+To switch: paste `supabase/migrations/001_init.sql` into the Supabase SQL editor,
+add `SUPABASE_SERVICE_ROLE_KEY` to `.env`, set `DB_BACKEND=supabase`, then run
+`python scripts/check_supabase.py` and `python scripts/copy_to_supabase.py`. Every
+table has row level security enabled with no policies, so only the server-side
+service role reaches the data. The backend is written but not live-tested; if
+anything fails, set `DB_BACKEND=sqlite` and demo on SQLite.
 
 ## Checkpoint 0 checks
 
@@ -89,6 +97,20 @@ python scripts/smoke_e2e.py "Should I leave my stable job for a startup offer?" 
 
 `--featured` makes this completed example readable from the home page. Omit it
 for private runs. Model calls and actor runs consume your existing service allowance.
+
+`--fresh` skips the 24-hour story cache and scrapes again, which is what you want
+when calibrating retrieval; without it a repeated question reuses the previous
+council's stories. `--answer middle` answers any generated question automatically.
+
+Set `PRECEDENT_AUDIT=1` to write `data/mine_audit.json`, recording why each
+candidate was kept or rejected. Extraction is the narrowest stage in the pipeline
+and this is the only way to see which gate discarded a candidate:
+
+```sh
+PRECEDENT_AUDIT=1 python scripts/smoke_e2e.py "<dilemma>" --fresh
+```
+
+Seed both demo councils with `python scripts/demo_seed.py`.
 Stop both processes with Ctrl+C. The SQLite database preserves completed councils.
 The web process must never start pipeline threads. Port 5050 avoids the usual macOS
 port 5000 conflict. Once the web app is running, an optional phone preview is
@@ -109,12 +131,27 @@ port 5000 conflict. Once the web app is running, an optional phone preview is
 - Validated model JSON with one repair, verified-model fallbacks, and safe failure notices.
 - BGE relevance filtering and exact source-passage checks before extracted stories are retained.
 - Computed beliefs/priorities/stances, three debate rounds, own-cohort citations, and evidence-gated belief updates.
-- Basic verdict, receipts, metrics, low-precedent outcome, and retry controls.
+- Moderator swap tests, pooled data checks, up to two bounded web verifications,
+  fresh-evidence belief resets, and stopping rules.
+- At most one question, chosen by scoring whether any answer would change the
+  recommendation, with answer submission restricted to the council's own visitor.
+- Full verdict with crowd-vs-you, crux, dissent, cheap test, receipts and metrics;
+  an explicit low-precedent outcome and retry controls when evidence is thin.
+- Visitor profiles that prefill situations and a 24-hour story cache that only
+  reuses a council whose extraction taxonomy still matches and which gathered
+  enough stories to seat cohorts.
 
-The relevance floor is conservative and may discard relevant stories. An exact
-source passage confirms provenance but does not independently prove that an account
-is true or that its interpretation is correct. Online stories are not a representative
-sample. Confidence describes model preference, not the probability of success.
+**Live retrieval is the current limitation.** Reddit search returns few distinct
+threads for these decisions, so runs have been ending with too few stories to seat
+two cohorts and returning the low-precedent verdict. Candidates are ranked against
+the plan's outcome-seeking queries rather than the question alone, fallback results
+are restricted to Reddit threads, and fiction subreddits are excluded, but breadth
+remains thin. Audit a run before changing any of this.
+
+An exact source passage confirms provenance but does not independently prove that an
+account is true or that its interpretation is correct. Online stories are not a
+representative sample. Confidence describes model preference, not the probability of
+success.
 
 The currently verified models cover Qwen and Mistral families. Llama/Gemma access
 is gated; the worker uses the available models and discloses repeated families.
