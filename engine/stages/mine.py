@@ -96,7 +96,8 @@ def run(ctx, plan: dict, candidates: list[dict]) -> list[dict]:
             "and keep it short. If that passage does not exist, mark relevant false. "
             "Never turn unrelated text into a story about the listed options. "
             "Write third-person paraphrases: summaries <=30 words; reasons <=15 words. No names or usernames. "
-            "Return exactly one record for EVERY candidate idx, including the ones you mark relevant false.",
+            "Return exactly one record for EVERY candidate idx. For a candidate you mark relevant false, return only "
+            "{\"idx\": n, \"relevant\": false} and omit every other field.",
             {"options": plan["options"], "consequences": plan["consequences"], "situational": plan["situational"],
              "candidates": [{"idx": i, "text": c["text"][:1800]} for i, c in enumerate(batch)]},
             fallback={"stories": []}, max_tokens=3200)
